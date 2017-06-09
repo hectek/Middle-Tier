@@ -1,0 +1,39 @@
+
+namespace Name.Web.Controllers.CMSPages
+{
+
+    [RoutePrefix("...")]
+    public class CMSPagesApiController : ApiController
+    {
+
+        public ICMSPagesService _cmsPageService = null;
+        public IUserService _userService = null;
+
+        public CMSPagesApiController(ICMSPagesService cmsPageInject, IUserService userServiceInject)
+        {
+            _cmsPageService = cmsPageInject;
+            _userService = userServiceInject;
+        }
+       
+        //UPDATE 
+        [Route("{id:int}"), HttpPut]
+        public HttpResponseMessage UpdateCMSPages(CMSPagesUpdateRequest model, int id)
+        {
+            if (!ModelState.IsValid || model == null || model.DateToPublish > model.DateToExpire)
+            {
+                return Request.CreateErrorResponse(HttpStatusCode.BadRequest, ModelState);
+            }
+
+            SuccessResponse response = new SuccessResponse();
+
+            string userId = _userService.GetCurrentUserId();
+
+            _cmsPageService.Update(model, id, userId);
+
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+       
+    }
+
+}
