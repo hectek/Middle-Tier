@@ -1,0 +1,30 @@
+
+namespace Name.Web.Controllers.CMSPages
+{
+
+    [RoutePrefix("....")]
+    public class CMSPagesApiController : ApiController
+    {
+
+        public ICMSPagesService _cmsPageService = null;
+        public IUserService _userService = null;
+
+        public CMSPagesApiController(ICMSPagesService cmsPageInject, IUserService userServiceInject)
+        {
+            _cmsPageService = cmsPageInject;
+            _userService = userServiceInject;
+        }
+       
+        //SELECT FOR PAGINATION
+        [Route("icons/{pageIndex:int}/{pageSize:int}"), HttpGet]
+        public HttpResponseMessage GetIcons(int pageIndex, int pageSize)
+        {
+            ItemResponse<PagedList<CMSPageIcon>> response = new ItemResponse<PagedList<CMSPageIcon>>();
+            response.Item =  _cmsPageService.GetCMSIconsPaging(pageIndex, pageSize);
+
+            return Request.CreateResponse(HttpStatusCode.OK, response);
+        }
+
+    }
+
+}
