@@ -33,7 +33,6 @@ namespace Name.Web.Controllers.CMSPages
             return Request.CreateResponse(HttpStatusCode.OK, response);
         }
 
-       
     }
 
 }
