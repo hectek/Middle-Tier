@@ -1,0 +1,177 @@
+
+        // Charge Once a Card.
+        public int Charge(StripePaymentAddRequest model, int userId)
+        {
+
+            string ApiKey = _config.StripeSecretKey;  //Change to LIVE KEY in Production
+            StripeConfiguration.SetApiKey(ApiKey);
+            StripeChargeService _service = new StripeChargeService();
+            StripeCharge charge = null;
+            int id = 0;
+
+            StripeChargeCreateOptions options = new StripeChargeCreateOptions
+            {
+                Amount = model.Amount,
+                Currency = model.Currency,
+                Description = model.Description,
+                SourceTokenOrExistingSourceId = model.Token,
+            };
+
+            try
+            {
+
+                charge = _service.Create(options);
+
+                if (charge != null)
+                {
+                    model.ChargeId = charge.Id;
+                    model.TransactionData = JsonConvert.SerializeObject(charge);
+                    model.IsSubscription = false;
+                    // Send to DB
+                    id = Add(model, userId, null);
+                    // Email Transaction
+                    Task<bool> sentEmail = _emailService.SendTransactionEmail(model);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return id;
+
+        }
+
+        // Charge Customer 
+        public int ChargeCustomer(StripePaymentAddRequest model, Customer cst)
+        {
+            string ApiKey = _config.StripeSecretKey;  //Change to LIVE KEY in Production
+            StripeConfiguration.SetApiKey(ApiKey);
+            StripeChargeService _service = new StripeChargeService();
+            StripeCharge charge = null;
+            int id = 0;
+
+            StripeChargeCreateOptions options = new StripeChargeCreateOptions
+            {
+                Amount = model.Amount,
+                Currency = model.Currency,
+                Description = model.Description,
+                CustomerId = cst.CustomerId
+            };
+
+            try
+            {
+
+                charge = _service.Create(options);
+
+                if (charge != null)
+                {
+                    model.ChargeId = charge.Id;
+                    model.TransactionData = JsonConvert.SerializeObject(charge);
+                    model.IsSubscription = false;
+                    // Send to DB
+                    id = Add(model, cst.UserId, cst.CustomerId);
+                    // Email Transaction
+                    Task<bool> sentEmail = _emailService.SendTransactionEmail(model);
+                }
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return id;
+
+        }
+
+        // Create a Customer, save token for a later charge (subscriptions)
+        public StripeCustomer AddCustomer(StripePaymentAddRequest model, string email)
+        {
+
+            string ApiKey = _config.StripeSecretKey;  //Change to LIVE KEY in Production
+            StripeConfiguration.SetApiKey(ApiKey);
+            StripeCustomer customer = null;
+
+            // Create a Customer:
+            var customerOptions = new StripeCustomerCreateOptions
+            {
+                SourceToken = model.Token,
+                Email = email
+            };
+
+            var customerService = new StripeCustomerService();
+            customer = customerService.Create(customerOptions);
+
+            return customer;
+
+        }
+
+        // Subscribe to plan
+        public int Subscribe(StripePaymentAddRequest model, string planId, string customerId, int userId)
+        {
+            string ApiKey = _config.StripeSecretKey;  //Change to LIVE KEY in Production
+            StripeConfiguration.SetApiKey(ApiKey);
+            StripeSubscription subscription = null;
+
+            int id = 0;
+
+            var items = new List<StripeSubscriptionItemOption> {
+                new StripeSubscriptionItemOption {PlanId = planId}
+            };
+            var options = new StripeSubscriptionCreateOptions
+            {
+                Items = items,
+            };
+            var service = new StripeSubscriptionService();
+
+            subscription = service.Create(customerId, options);
+
+            if (subscription != null)
+            {
+                model.ChargeId = subscription.Id;
+                model.TransactionData = JsonConvert.SerializeObject(subscription);
+                model.IsSubscription = true;
+                model.SubscriptionActive = true;
+                // Send to DB
+                id = Add(model, userId, customerId);
+                // Email Transaction
+                Task<bool> sentEmail = _emailService.SendTransactionEmail(model);
+
+            }
+
+            return id;
+        }
+
+        // Cancel subscription (will return true when Unsubscribed)
+        public bool UnSubscribe(string subscriptionId, bool atPeriodEnd, string customerId)
+        {
+            // To cancel immediately set atPeriodEnd to false. No credits by default in Stipe if period has not ended.
+            // Set atPeriodEnd to true to cancel the subscription at the end of current billing period.
+
+            string ApiKey = _config.StripeSecretKey;  //Change to LIVE KEY in Production
+            StripeConfiguration.SetApiKey(ApiKey);
+            StripeSubscription subscription = null;
+            bool inactive = false;
+
+            var service = new StripeSubscriptionService();
+            subscription = service.Cancel(subscriptionId, atPeriodEnd);
+
+            // Inactivate on DB
+            if (subscription != null)
+            {
+                InactivateSubscription(customerId, subscriptionId);
+
+                // Email Transaction
+                StripePaymentAddRequest model = new StripePaymentAddRequest();
+                model.ChargeId = subscription.Id;
+                model.TransactionData = JsonConvert.SerializeObject(subscription);
+                Task<bool> sentEmail = _emailService.SendTransactionEmail(model);
+
+                inactive = true;
+            }
+
+            return inactive;
+
+        }
