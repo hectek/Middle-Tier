@@ -1,0 +1,37 @@
+ ////////////  API Controller
+ 
+ [RoutePrefix("api/media")]
+    public class MediaApiController : ApiController
+    {
+        [Route("instagram/feed"), HttpGet]
+        public HttpResponseMessage InstagramFeed()
+        {
+       
+            string authToken  = ConfigurationManager.AppSettings["instagram.authtoken"].ToString();
+            byte[] data = MediaService.GetInstagramMedia(authToken);
+
+            var response = Request.CreateResponse(HttpStatusCode.OK);
+            response.Content = new ByteArrayContent(data);
+            response.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+
+            return response;
+
+        }
+
+    }
+    
+    
+    ///////// Service Class 
+    
+     public static byte[] GetInstagramMedia(string authToken)
+        {
+           
+            string uri = "https://api.instagram.com/v1/users/self/media/recent/?access_token=" + authToken;
+
+            using (WebClient webClient = new WebClient())
+            {
+                return webClient.DownloadData(uri);
+            }
+
+        }
+    
