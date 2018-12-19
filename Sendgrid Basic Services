@@ -1,0 +1,246 @@
+
+        public async Task<bool> Send(EmailRequest model)
+        {
+            SendGridClient client = GetMailClient();
+            string userEmail = _user.GetEmail(_currentUser.Id);
+
+            // Message
+            SendGridMessage message = new SendGridMessage()
+            {
+                From = new EmailAddress(userEmail, model.Name),
+                Subject = "Email from Admin",
+                HtmlContent = model.Body,
+            };
+
+            // To
+            List<EmailAddress> tos = new List<EmailAddress>();
+            for (int i = 0; i < model.To.Length; i++)
+            {
+                tos.Add(new EmailAddress(model.To[i]));
+            }
+            message.AddTos(tos);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+            /*  BCC  Example to add 
+            string bccEmail = "hector@sabio.la";   
+            string bccName = "Hector Arias";       
+            EmailAddress bcc = new EmailAddress(bccEmail, bccName);
+            List<EmailAddress> bccEmails = new List<EmailAddress>();
+            bccEmails.Add(bcc);
+            message.AddBccs(bccEmails); */
+
+        }
+
+        #region -Invites-
+        public async Task<bool> SendInvites(ContractInvitesRequest model)
+        {
+            SendGridClient client = GetMailClient();
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+            
+            // Insert into email template
+            message.AddSubstitution("-subject-", "You have been invited to join");
+            message.AddSubstitution("-contractUrl-", _config.SiteDomain + "login/" + model.Token);
+            message.TemplateId = "54e56b1c-c381-4aa1-847a-86125d7c7aa6";
+
+            // To
+            List<EmailAddress> tos = new List<EmailAddress>();
+            for (int i = 0; i < model.Emails.Length; i++)
+            {
+                tos.Add(new EmailAddress(model.Emails[i]));
+            }
+
+            message.AddTos(tos);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+        }
+
+        public async Task<bool> SendInvitesNonRegistered(ContractInvitesRequest model)
+        {
+            SendGridClient client = GetMailClient();
+
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+            
+            // Insert into email template
+            message.AddSubstitution("-subject-", "You have been invited to join the site");
+            message.AddSubstitution("-contractUrl-", _config.SiteDomain + "register/" + model.Token);
+            message.TemplateId = "1630a85a-7b86-47ae-b7f8-daafe0058557";
+
+            // To
+            List<EmailAddress> tos = new List<EmailAddress>();
+            for (int i = 0; i < model.Emails.Length; i++)
+            {
+                tos.Add(new EmailAddress(model.Emails[i]));
+            }
+
+            message.AddTos(tos);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+        }
+
+        public async Task<bool> SendCompletedNoticeToParticipants(List<Participant> participantsList)
+        {
+            SendGridClient client = GetMailClient();
+            string contractId = null;
+
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+
+            // To
+            List<EmailAddress> tos = new List<EmailAddress>();
+
+            foreach (var participant in participantsList)
+            {
+                tos.Add(new EmailAddress(participant.Email));
+                contractId = participant.ContractExternalId;
+            }
+
+           // Insert into email template
+            message.AddSubstitution("-subject-", "Approved");
+            message.AddSubstitution("-contractUrl-", _config.SiteDomain + "contracts/" + contractId);
+            message.TemplateId = "7c303018-bc3b-486a-8579-79f53dc15b40";
+            message.AddTos(tos);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+        }
+
+        #endregion
+
+
+        public async Task<bool> Send(NotificationsEmailRequest model)
+        {
+            SendGridClient client = GetMailClient();
+            string userEmail = model.Email;
+
+            // Message
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(userEmail, model.Name);
+            message.Subject = model.Subject;
+            message.HtmlContent = model.Body;
+            message.AddTo(_config.SiteNotifications);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+        }
+
+
+        #region -Recover Email -
+        public async Task<bool> SendRecovery(UserEmailRequest model, Guid token)
+        {
+            SendGridClient client = GetMailClient();
+            string userEmail = model.Email;
+
+            // Message
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+            message.Subject = "Password Reset for your Account";
+            message.HtmlContent = "Please click the link to reset your password: <br/> " + _config.SiteDomain + "reset/" + token;
+            message.AddTo(userEmail);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+        }
+        #endregion
+
+        #region -Confirmation Email-
+        //Send one at a time
+        public async Task<bool> SendInvite(ContractInviteRequest model)
+        {
+            SendGridClient client = GetMailClient();
+            string userEmail = model.Email;
+
+            // Message
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+            message.Subject = "You have been invited to confirm";
+            message.HtmlContent = "Please click to login and confir,,: <br/> " + _config.SiteDomain + "contracts/details/" + model.Token + "/" + model.ContractExId;
+
+            message.AddTo(userEmail);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+        }
+
+
+        public async Task<bool> SendConfirmation(string email, Guid token)
+        {
+            SendGridClient client = GetMailClient();
+
+            string userEmail = email;
+            //string userEmail = "danny@sabio.la";
+
+            // Message
+            SendGridMessage message = new SendGridMessage();
+            message.From = new EmailAddress(_config.SiteNotifications, _config.Site.ToString());
+            //message.HtmlContent = "Please click to confirm your email: <br/> https://" + _config.SiteDomain + "/confirm/" + token;
+
+            // Insert into email template
+            message.AddSubstitution("-subject-", "Please Confirm your Email");
+            message.AddSubstitution("-contractUrl-", _config.SiteDomain + "confirm/" + token);
+            message.TemplateId = "69f0c0de-3028-4b74-b4fd-053c5c37482d";
+            message.AddTo(userEmail);
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+        }
+
+        #endregion
+
+        public async Task<bool> SendTemplate(EmailRequest model)
+        {
+            SendGridClient client = GetMailClient();
+
+            // Message
+            SendGridMessage message = new SendGridMessage()
+            {
+                From = new EmailAddress("admin@company.co", "Admin"),
+                //Subject = Do not need to set subject here. it is take care in the tempalte and in the substitutions,
+                HtmlContent = model.Body,// the body property will not override the html email body. it will be substituted in as well
+            };
+
+            // To
+            List<EmailAddress> tos = new List<EmailAddress>();
+            for (int i = 0; i < model.To.Length; i++)
+            {
+                tos.Add(new EmailAddress(model.To[i]));
+            }
+            message.AddTos(tos);
+            
+            // Insert into email template
+            message.AddSubstitution("-firstName-", "Enigo");
+            message.AddSubstitution("-secondMessage-", "Avengers Web Site");
+            message.AddSubstitution("-firstMessage-", "First message here");
+            message.AddSubstitution("-subject-", "Avengers Web Dash");
+            message.AddSubstitution("-preHeader-", "Sabio preview text showing");
+            message.TemplateId = "0041d873-c13f-47ea-ab29-b664cdc4eb08";
+
+            SendGrid.Response response = await client.SendEmailAsync(message);
+            bool success = response.StatusCode == System.Net.HttpStatusCode.Accepted || response.StatusCode == HttpStatusCode.OK;
+            return success;
+
+        }
+
+        private SendGridClient GetMailClient()
+        {
+            string apiKey = _config.SendGridApiKey;
+            SendGridClient client = new SendGridClient(apiKey);
+            return client;
+        }
