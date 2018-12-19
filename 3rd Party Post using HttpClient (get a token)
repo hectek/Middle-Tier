@@ -1,0 +1,32 @@
+      public static async Task<string> GetToken()
+        {
+            string accessToken = null;
+
+            try
+            {
+
+                string uri = "https://api.instagram.com/oauth/access_token";
+
+                Dictionary<string, string> parameters = new Dictionary<string, string>();
+                parameters.Add("client_id", ConfigurationManager.AppSettings["instagram.clientid"].ToString());
+                parameters.Add("client_secret", ConfigurationManager.AppSettings["instagram.clientsecret"].ToString());
+                parameters.Add("redirect_uri", ConfigurationManager.AppSettings["instagram.redirecturi"].ToString());
+                parameters.Add("grant_type", "authorization_code");
+                parameters.Add("code", code);
+
+                var content = new FormUrlEncodedContent(parameters);
+
+                HttpClient client = new HttpClient();
+                var result = await client.PostAsync(uri, content);
+                var response = await result.Content.ReadAsStringAsync();
+                var jsResult = (JObject)JsonConvert.DeserializeObject(response);
+                accessToken = (string)jsResult["access_token"];
+
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+
+            return accessToken;
+        }
