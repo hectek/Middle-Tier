@@ -1,0 +1,114 @@
+private static string url = "https://api.meetup.com/NAME/events?photo-host=public&page=5&fields=event_hosts%2Cfeatured_photo&key=SOME_KEY&sign=true&format=json
+
+// Deserialize Meetup data into List for current "Event" url
+public static List<Meeting> Get(string url)
+{
+    WebClient client = new WebClient();
+    string reply = client.DownloadString(url);
+    
+    List<Meeting> meetings = JsonConvert.DeserializeObject<List<Meeting>>(reply);
+
+    return meetings;
+
+}
+
+
+///// Model 
+
+public class Meeting
+
+{
+
+    [JsonProperty("created")]
+    public long Created { get; set; }
+
+    [JsonProperty("duration")]
+    public int Duration { get; set; }
+
+    [JsonProperty("id")]
+    public string Id { get; set; }
+
+    [JsonProperty("name")]
+    public string Name { get; set; }
+
+    [JsonProperty("rsvp_limit")]
+    public int RsvpLimit { get; set; }
+
+    [JsonProperty("status")]
+    public string Status { get; set; }
+
+    [JsonProperty("time")]
+    public long Time { get; set; }
+
+    public DateTime Date
+    {
+
+        get
+        {
+            return FromUnixTime(Time).AddHours(HoursOffset);
+        }
+
+        set {
+            Date = value;
+        }
+    }
+
+    private DateTime FromUnixTime(long unixTime)
+    {
+        var epoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        return epoch.AddSeconds(ConvertMillisecondsToSeconds(unixTime));
+    }
+
+    public static double ConvertMillisecondsToSeconds(double milliseconds)
+    {
+        return TimeSpan.FromMilliseconds(milliseconds).TotalSeconds;
+    }
+
+    [JsonProperty("updated")]
+    public long Updated { get; set; }
+
+    [JsonProperty("utc_offset")]
+    public int UtcOffset { get; set; }
+
+
+    public double HoursOffset
+    {
+
+        get
+        {
+            return TimeSpan.FromMilliseconds(UtcOffset).TotalHours;
+        }
+    }
+
+
+
+    [JsonProperty("waitlist_count")]
+    public int WaitlistCount { get; set; }
+
+    [JsonProperty("yes_rsvp_count")]
+    public int YesRsvpCount { get; set; }
+
+    [JsonProperty("group")]
+    public Group Group { get; set; }
+
+    [JsonProperty("link")]
+    public string Link { get; set; }
+
+    [JsonProperty("description")]
+    public string Description { get; set; }
+
+    [JsonProperty("how_to_find_us")]
+    public string HowToFindUs { get; set; }
+
+    [JsonProperty("visibility")]
+    public string Visibility { get; set; }
+
+    [JsonProperty("event_hosts")]
+    public List<EventHost> EventHosts { get; set; }
+
+    [JsonProperty("featured")]
+    public bool Featured { get; set; }
+    [JsonProperty("featured_photo")]
+    public FeaturedPhoto FeaturedPhotos { get; set; }
+
+}
