@@ -1,0 +1,164 @@
+// Eventbrite Api Url
+private static string _ownedEvents = "https://www.eventbriteapi.com/v3/users/me/owned_events?token=SOME_TOKEN&status=live";
+
+// Get Events from Eventbrite and Deserialize
+public static MeetEvent GetAllEvents()
+{
+
+    MeetEvent meet = new MeetEvent();
+    WebClient client = new WebClient();
+
+    try
+    {
+        // IMPORTANT TO NOT GET UNAUTHORIZED ERRORS
+        ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+        string reply = client.DownloadString(_ownedEvents);
+
+        if (reply != null)
+        {
+            JObject rep = JObject.Parse(reply);
+            meet.Pagination = JsonConvert.DeserializeObject<Paginate>(rep["pagination"].ToString());
+            meet.Events = new Events();
+            List<JToken> events = rep["events"].Children().ToList();
+            
+            if (events.Count > 0)
+            {
+                List<Event> prevnt = new List<Event>();
+                foreach (var item in events)
+                {
+                    string _name = item["name"]["text"].ToString();
+                    string _desc = item["description"].ToString();
+                    string _id = item["id"].ToString();
+                    string _url = item["url"].ToString();
+                    string _status = item["status"].ToString();
+
+                    Start _start = JsonConvert.DeserializeObject<Start>(item["start"].ToString());
+                    Logo _logo = JsonConvert.DeserializeObject<Logo>(item["logo"].ToString());
+
+                    Event ev = new Event(_name, _desc, _id, _url, _status, _start, _logo);
+
+                    prevnt.Add(ev);
+                }
+              }
+        }
+    }
+    catch(Exception)
+    {
+
+       // Method that will create some default events 
+       meet = DefaultEvents();
+
+    }
+
+    return meet;
+
+}
+        
+        
+//////////////////////////////// Classes Used:
+  
+public class MeetEvent
+{
+    [JsonProperty("pagination")]
+    public Paginate Pagination { get; set; }
+    
+    /// This is a class with properties that are List<Event>
+    public Events Events { get; set; }
+   
+}
+        
+public class Paginate
+{
+
+    public Paginate(int _objectCount, int _pageNumber, int _pageSize, int _pageCount, string _continuation, bool _hasMore)
+    {
+        Object_Count = _objectCount;
+        Page_Number = _pageNumber;
+        Page_Size = _pageSize;
+        Page_Count = _pageCount;
+        Continuation = _continuation;
+        Has_more_items = _hasMore;
+    }
+
+    [JsonProperty("object_count")]
+    public int Object_Count { get; set; }
+    [JsonProperty("page_number")]
+    public int Page_Number { get; set; }
+    [JsonProperty("page_size")]
+    public int Page_Size { get; set; }
+    [JsonProperty("page_count")]
+    public int Page_Count { get; set; }
+    [JsonProperty("continuation")]
+    public string Continuation { get; set; }
+    [JsonProperty("has_more_items")]
+    public bool Has_more_items { get; set; }
+
+}
+
+
+public class Event
+{
+
+  public Event(string _name, string _description, string _id, string _url, string _status, Start _start, Logo _logo)
+  {
+      Name = _name;
+      Description = _description;
+      Id = _id;
+      Url = _url;
+      Status = _status;
+      Start = _start;
+      Logo = _logo;
+      LocationId = SetLocationId();
+  }
+
+  [JsonProperty("name")]
+  public string Name { get; set; }
+  [JsonProperty("description")]
+  public string Description { get; set; }
+  [JsonProperty("id")]
+  public string Id { get; set; }
+  [JsonProperty("url")]
+  public string Url { get; set; }
+  [JsonProperty("status")]
+  public string Status { get; set; }
+  [JsonProperty("start")]
+  public Start Start { get; set; }
+  [JsonProperty("logo")]
+  public Logo Logo { get; set; }
+
+}
+
+
+public class Start
+{
+    public Start(string _time, DateTimeOffset _local, DateTimeOffset _utc)
+    {
+        Timezone = _time;
+        Local = _local;
+        Utc = _utc;
+    }
+
+    [JsonProperty("timezone")]
+    public string Timezone { get; set; }
+    [JsonProperty("local")]
+    public DateTimeOffset Local { get; set; }
+    [JsonProperty("utc")]
+    public DateTimeOffset Utc { get; set; }
+}
+
+public class Logo
+{
+    public Logo()
+    {
+        this.Url = null;
+    }
+
+    public Logo(string _url)
+    {
+        Url = _url;
+    }
+
+    [JsonProperty("url")]
+    public string Url { get; set; }
+
+}
