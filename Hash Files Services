@@ -1,0 +1,76 @@
+
+    public byte[] ToUTF8ByteArray(string strData)
+    {
+        return Encoding.UTF8.GetBytes(strData);
+    }
+
+    public byte[] CreateByteArray(int contractId)
+    {
+        ContractFile file = null;
+        List<LedgerEntry> list = null;
+        string strData = null;
+        byte[] contractBytes = null;
+        byte[] fileBytes = null;
+
+        list = _ledgerService.Get(contractId);
+        file = GetFile(contractId);
+
+        if (list != null)
+        {
+            ContractHashModel contract = new ContractHashModel();
+            contract = GetHashModel(list);
+            strData = JsonConvert.SerializeObject(contract);
+            contractBytes = ToUTF8ByteArray(strData);
+        }
+
+        if (file != null && file.FileUrl != null)
+        {
+            fileBytes = ToUTF8ByteArray(file.FileUrl.Replace("Some url", ""));
+        }
+
+        byte[] toHashByte = fileBytes != null ? JoinArrays(contractBytes, fileBytes) : contractBytes;
+
+        return toHashByte;
+
+    }
+
+    public string GetSha256FromString(string strData)
+    {
+        var crypt = new SHA256Managed();
+        var hash = new StringBuilder();
+        byte[] crypto = crypt.ComputeHash(Encoding.UTF8.GetBytes(strData));
+        foreach (byte theByte in crypto)
+        {
+            hash.Append(theByte.ToString("x2"));
+        }
+
+        return hash.ToString();
+    }
+
+    public byte[] JoinArrays(byte[] arr1, byte[] arr2)
+    {
+        List<byte> list1 = new List<byte>(arr1);
+        List<byte> list2 = new List<byte>(arr2);
+        list1.AddRange(list2);
+        byte[] totalByte = list1.ToArray();
+        return totalByte;
+    }
+
+    public string GetSha256FromByteArray(byte[] byteArr)
+    {
+        var crypt = new SHA256Managed();
+        var hash = new StringBuilder();
+        byte[] crypto = crypt.ComputeHash(byteArr);
+        foreach (byte theByte in crypto)
+        {
+            hash.Append(theByte.ToString("x2"));
+        }
+        return hash.ToString();
+    }
+
+    public string GetContractHash(int contractId)
+    {
+        byte[] toHashByte = CreateByteArray(contractId);
+        string contractHash = GetSha256FromByteArray(toHashByte);
+        return contractHash;
+    }
